@@ -1,0 +1,28 @@
+[project]
+name = "reward-proxy-stdp"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "jaxtyping>=0.3.9",
+    "torch>=2.0",
+    "torchvision>=0.15",
+]
+
+[project.optional-dependencies]
+cuda = [
+    "jax[cuda12]>=0.4",
+]
+cpu = [
+    "jax[cpu]>=0.4",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu126" }
+torchvision = { index = "pytorch-cu126" }
