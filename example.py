@@ -1,33 +1,21 @@
 """Example: Using datasets with the spiking neural network."""
 import jax
 import jax.numpy as jnp
+import equinox as eqx
 
-from nets import NetworkParams, step_LIF, T_LIF
-from nets.factory import create_network
+from nets import NetworkData, NetworkParams, step_LIF, T_LIF
+from nets.factory import create_network, register_component
 from nets.initialization import init_watts_strogatz
-from nets.net_data import LIFNet
 from datasets import load_mnist, load_vision_dataset
 
 
+class LIFNet(eqx.Module):
+    data:   NetworkData
+    params: NetworkParams
+
+
 def run_network(net: T_LIF, input_data, n_timesteps=50, scale=2.0) -> T_LIF:
-    """Run the spiking network for multiple timesteps.
-
-    Parameters
-    ----------
-    net : T_LIF
-        Initialized network — any type satisfying LIFArchetype.
-    input_data : jnp.ndarray
-        Input vector for perceptors.
-    n_timesteps : int
-        Number of simulation steps.
-    scale : float
-        Input scaling factor (higher = more spikes).
-
-    Returns
-    -------
-    T_LIF
-        Network state after simulation, same concrete type as input.
-    """
+    """Run the spiking network for multiple timesteps."""
     perception_input = input_data * scale
     for _ in range(n_timesteps):
         net = step_LIF(net, perception_input)
@@ -41,13 +29,12 @@ def example_mnist():
     print("=" * 60)
 
     print("\nLoading MNIST dataset...")
-    train_data = load_mnist(train=True)
-    test_data  = load_mnist(train=False)
-    print(f"Training samples: {len(train_data)}")
-    print(f"Test samples:     {len(test_data)}")
+    test_data = load_mnist(train=False)
+    print(f"Test samples: {len(test_data)}")
 
-    print("\nInitializing network via factory (reads config.toml)...")
-    net = create_network("lif", jax.random.PRNGKey(42))
+    print("\nInitializing network...")
+    net = create_network(LIFNet)
+    net = init_watts_strogatz(jax.random.PRNGKey(42), net)
     print(f"Network: {net.data.v.shape[0]} neurons, "
           f"{net.data.weights.shape[1]} connections/neuron")
 
@@ -80,8 +67,7 @@ def example_other_datasets():
             print(f"\n{display_name}:")
             data = load_vision_dataset(name, train=False, download=True)
             print(f"  ✓ Loaded {len(data)} samples")
-            print(f"  Input shape: {data.input_shape} ({data.input_shape[0]} inputs)")
-            print(f"  Classes: {data.num_classes}")
+            print(f"  Input shape: {data.input_shape}")
             assert data.input_shape[0] == expected_inputs
             assert data.num_classes == expected_classes
         except Exception as e:
@@ -89,36 +75,27 @@ def example_other_datasets():
 
 
 def example_custom_params():
-    """Example with custom network parameters (bypassing factory)."""
+    """Example with a custom entity type and overridden params."""
     print("\n" + "=" * 60)
     print("Custom Network Parameters")
     print("=" * 60)
 
-    custom_params = NetworkParams(
-        v_threshold=1.5,
-        v_rest=0.0,
-        LIF_factor=0.85,
+    # Override just the params by passing a custom NetworkParams to the net
+    net = create_network(LIFNet)
+    net = eqx.tree_at(
+        lambda n: n.params,
+        net,
+        NetworkParams(v_threshold=1.5, v_rest=0.0, LIF_factor=0.85),
     )
-    print(f"\nCustom parameters:")
-    print(f"  Threshold: {custom_params.v_threshold}")
-    print(f"  LIF factor: {custom_params.LIF_factor}")
+    net = init_watts_strogatz(jax.random.PRNGKey(123), net)
 
-    net = init_watts_strogatz(
-        key=jax.random.PRNGKey(123),
-        net_type=LIFNet,
-        N_neurons=1000,
-        degree=20,
-        N_perceptors=784,
-        N_effectors=10,
-        params=custom_params,
-    )
-    print(f"\nNetwork initialized with custom parameters")
     print(f"  Threshold: {net.params.v_threshold}")
     print(f"  LIF factor: {net.params.LIF_factor}")
+    print(f"  Network: {net.data.v.shape[0]} neurons")
 
 
 def main():
-    print("\nSpiking Neural Network - Dataset Examples\n")
+    print("\nSpiking Neural Network - Examples\n")
     example_mnist()
     example_other_datasets()
     example_custom_params()

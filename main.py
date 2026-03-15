@@ -1,10 +1,17 @@
 """Main entry point for reward-proxy-stdp."""
 import jax
 import jax.numpy as jnp
+import equinox as eqx
 
-from nets import step_LIF
+from nets import NetworkData, NetworkParams, step_LIF
 from nets.factory import create_network
+from nets.initialization import init_watts_strogatz
 from datasets import load_mnist
+
+
+class LIFNet(eqx.Module):
+    data:   NetworkData
+    params: NetworkParams
 
 
 def main():
@@ -16,12 +23,12 @@ def main():
     print(f"   ✓ {len(test_data)} test samples")
 
     print("\n2. Initializing network...")
-    net = create_network("lif", jax.random.PRNGKey(42))
+    net = create_network(LIFNet)
+    net = init_watts_strogatz(jax.random.PRNGKey(42), net)
     print(f"   ✓ {net.data.v.shape[0]} neurons")
 
     print("\n3. Running simulation...")
     image, label = test_data[0]
-
     for _ in range(50):
         net = step_LIF(net, image * 2.0)
 

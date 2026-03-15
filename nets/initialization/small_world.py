@@ -1,39 +1,17 @@
-from typing import TypeVar
-
-from jaxtyping import Array, Float, Int
+import equinox as eqx
+from jaxtyping import Array
 import jax
 import jax.numpy as jnp
 
-from ..net_data import NetworkData, NetworkParams
 from ..net_exec import T_LIF
 
 
-T = TypeVar("T")
-
-
-def _build_essentials(
-    N_neurons: int,
-    N_perceptors: int,
-    N_effectors: int,
-) -> tuple[Float[Array, "N_neurons"], Int[Array, "N_perceptors"], Int[Array, "N_effectors"]]:
-    """Return (v, perceptors, effectors) initialised to rest."""
-    v = jnp.zeros(N_neurons)
-    perceptors = jnp.arange(N_perceptors, dtype=jnp.int32)
-    effectors  = jnp.arange(N_neurons - N_effectors, N_neurons, dtype=jnp.int32)
-    return v, perceptors, effectors
-
-
 def init_watts_strogatz(
-    key:          jax.Array,
-    net_type:     type[T_LIF],
-    N_neurons:    int,
-    degree:       int,
-    N_perceptors: int,
-    N_effectors:  int,
-    beta:         float = 0.3,
-    params:       NetworkParams | None = None,
+    key:  jax.Array,
+    net:  T_LIF,
+    beta: float = 0.3,
 ) -> T_LIF:
-    """Stochastic small-world initialisation (Watts-Strogatz style).
+    """Fill a network's topology using the Watts-Strogatz small-world model.
 
     1. Build a ring-lattice where each neuron connects to its *degree*
        nearest neighbours (forward direction on the ring).
@@ -45,52 +23,41 @@ def init_watts_strogatz(
     ----------
     key : jax.Array
         PRNG key for reproducibility.
-    net_type : type[T_LIF]
-        Concrete entity type to instantiate (e.g. LIFNet).
-        Must accept ``data=NetworkData(...)`` and ``params=NetworkParams(...)``.
-    N_neurons : int
-        Total number of neurons in the network.
-    degree : int
-        Number of outgoing connections per neuron.
-    N_perceptors : int
-        Number of input (perceptor) neurons.
-    N_effectors : int
-        Number of output (effector) neurons.
+    net : T_LIF
+        Network shell produced by ``create_network``.
+        Dimensions (N_neurons, degree) are read from its existing arrays.
     beta : float
         Rewiring probability (0 = pure ring, 1 = fully random).
-    params : NetworkParams | None
-        Optional override for network hyper-parameters.
-    """
-    if params is None:
-        params = NetworkParams()
 
-    v, perceptors, effectors = _build_essentials(N_neurons, N_perceptors, N_effectors)
+    Returns
+    -------
+    T_LIF
+        Same entity type as input, with ``data.forward_connections`` and
+        ``data.weights`` filled in.
+    """
+    N      = net.data.v.shape[0]
+    degree = net.data.weights.shape[1]
 
     # --- Ring lattice ---
     offsets    = jnp.arange(1, degree + 1)
-    neuron_ids = jnp.arange(N_neurons)
-    ring = (neuron_ids[:, None] + offsets[None, :]) % N_neurons
+    neuron_ids = jnp.arange(N)
+    ring = (neuron_ids[:, None] + offsets[None, :]) % N
 
     # --- Stochastic rewiring ---
     key_rewire, key_target, key_weights = jax.random.split(key, 3)
 
-    rewire_mask     = jax.random.bernoulli(key_rewire, p=beta, shape=(N_neurons, degree))
-    random_targets  = jax.random.randint(key_target, shape=(N_neurons, degree), minval=0, maxval=N_neurons)
+    rewire_mask    = jax.random.bernoulli(key_rewire, p=beta, shape=(N, degree))
+    random_targets = jax.random.randint(key_target, shape=(N, degree), minval=0, maxval=N)
 
     # Avoid self-connections
     self_mask      = random_targets == neuron_ids[:, None]
-    random_targets = jnp.where(self_mask, (random_targets + 1) % N_neurons, random_targets)
+    random_targets = jnp.where(self_mask, (random_targets + 1) % N, random_targets)
 
     forward_connections = jnp.where(rewire_mask, random_targets, ring).astype(jnp.int32)
+    weights             = jax.random.uniform(key_weights, shape=(N, degree))
 
-    weights = jax.random.uniform(key_weights, shape=(N_neurons, degree))
-
-    data = NetworkData(
-        v=v,
-        forward_connections=forward_connections,
-        weights=weights,
-        perceptors=perceptors,
-        effectors=effectors,
+    return eqx.tree_at(
+        lambda n: (n.data.forward_connections, n.data.weights),
+        net,
+        (forward_connections, weights),
     )
-
-    return net_type(data=data, params=params)

@@ -29,12 +29,3 @@ class NetworkData(eqx.Module):
     # I/O neuron indices
     perceptors:          Int[Array, "N_perceptors"]
     effectors:           Int[Array, "N_effectors"]
-
-
-# ── Concrete entity types ─────────────────────────────────────────────────────
-
-class LIFNet(eqx.Module):
-    """Entity: LIF network. Holds NetworkData and NetworkParams as parallel components."""
-
-    data:   NetworkData
-    params: NetworkParams
