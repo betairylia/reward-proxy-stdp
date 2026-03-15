@@ -1,13 +1,10 @@
 import math
 
+import equinox as eqx
 from jaxtyping import Array, Float, Int
-import jax
-import jax.numpy as jnp
 
-from typing import NamedTuple
 
-# Hyper-params
-class NetworkParams(NamedTuple):
+class NetworkParams(eqx.Module):
 
     # LIF neuron
 
@@ -18,7 +15,8 @@ class NetworkParams(NamedTuple):
     # LIF's RC characteristic time, approx. 5x spike time
     LIF_factor: float = math.exp(-1 / 6.0)
 
-class NetworkData(NamedTuple):
+
+class NetworkData(eqx.Module):
 
     params:                     NetworkParams
 

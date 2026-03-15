@@ -6,7 +6,7 @@ small-world connectivity and STDP learning.
 import jax
 import jax.numpy as jnp
 
-from nets import NetworkParams, NetworkData, step_LIF
+from nets import step_LIF
 from nets.initialization import init_watts_strogatz
 from datasets import load_mnist
 

@@ -6,29 +6,29 @@ the LIF spiking neural network.
 import jax
 import jax.numpy as jnp
 
-from nets import NetworkParams, step_LIF
+from nets import NetworkParams, step_LIF, T_LIF
 from nets.initialization import init_watts_strogatz
 from datasets import load_mnist, load_vision_dataset
 
 
-def run_network(net, input_data, n_timesteps=50, scale=2.0):
+def run_network(net: T_LIF, input_data, n_timesteps=50, scale=2.0) -> T_LIF:
     """Run the spiking network for multiple timesteps.
-    
+
     Parameters
     ----------
-    net : NetworkData
-        Initialized network
+    net : T_LIF
+        Initialized network — any type satisfying LIFArchetype.
     input_data : jnp.ndarray
         Input vector for perceptors
     n_timesteps : int
         Number of simulation steps
     scale : float
         Input scaling factor (higher = more spikes)
-    
+
     Returns
     -------
-    NetworkData
-        Network state after simulation
+    T_LIF
+        Network state after simulation, same concrete type as input.
     """
     perception_input = input_data * scale
     

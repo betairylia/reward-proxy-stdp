@@ -11,9 +11,12 @@ Example usage::
 
 from .net_data import NetworkData, NetworkParams
 from .net_exec import step_LIF
+from .archetypes import LIFArchetype, T_LIF
 
 __all__ = [
     "NetworkData",
     "NetworkParams",
     "step_LIF",
+    "LIFArchetype",
+    "T_LIF",
 ]
