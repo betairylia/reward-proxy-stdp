@@ -1,22 +1,24 @@
 """Public API for the `nets` package.
 
-This module re-exports the core data structures, execution functions,
-and initialization utilities for spiking neural networks.
-
 Example usage::
 
-    from nets import NetworkData, NetworkParams, step_LIF
+    from nets import LIFNet, NetworkData, NetworkParams, step_LIF
+    from nets.factory import create_network
     from nets.initialization import init_watts_strogatz
 """
 
-from .net_data import NetworkData, NetworkParams
-from .net_exec import step_LIF
-from .archetypes import LIFArchetype, T_LIF
+from .net_data import NetworkData, NetworkParams, LIFNet
+from .net_exec import LIFArchetype, T_LIF, step_LIF
 
 __all__ = [
+    # Components
     "NetworkData",
     "NetworkParams",
-    "step_LIF",
+    # Entities
+    "LIFNet",
+    # Archetypes + TypeVars
     "LIFArchetype",
     "T_LIF",
+    # Systems
+    "step_LIF",
 ]

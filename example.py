@@ -1,13 +1,11 @@
-"""Example: Using datasets with the spiking neural network.
-
-Demonstrates loading various datasets and running them through
-the LIF spiking neural network.
-"""
+"""Example: Using datasets with the spiking neural network."""
 import jax
 import jax.numpy as jnp
 
 from nets import NetworkParams, step_LIF, T_LIF
+from nets.factory import create_network
 from nets.initialization import init_watts_strogatz
+from nets.net_data import LIFNet
 from datasets import load_mnist, load_vision_dataset
 
 
@@ -19,11 +17,11 @@ def run_network(net: T_LIF, input_data, n_timesteps=50, scale=2.0) -> T_LIF:
     net : T_LIF
         Initialized network — any type satisfying LIFArchetype.
     input_data : jnp.ndarray
-        Input vector for perceptors
+        Input vector for perceptors.
     n_timesteps : int
-        Number of simulation steps
+        Number of simulation steps.
     scale : float
-        Input scaling factor (higher = more spikes)
+        Input scaling factor (higher = more spikes).
 
     Returns
     -------
@@ -31,71 +29,52 @@ def run_network(net: T_LIF, input_data, n_timesteps=50, scale=2.0) -> T_LIF:
         Network state after simulation, same concrete type as input.
     """
     perception_input = input_data * scale
-    
-    for t in range(n_timesteps):
+    for _ in range(n_timesteps):
         net = step_LIF(net, perception_input)
-    
     return net
 
 
 def example_mnist():
-    """Basic example using MNIST dataset."""
-    print("="*60)
+    """Basic example using factory + MNIST."""
+    print("=" * 60)
     print("MNIST Example")
-    print("="*60)
-    
-    # Load MNIST
+    print("=" * 60)
+
     print("\nLoading MNIST dataset...")
     train_data = load_mnist(train=True)
-    test_data = load_mnist(train=False)
-    
+    test_data  = load_mnist(train=False)
     print(f"Training samples: {len(train_data)}")
-    print(f"Test samples: {len(test_data)}")
-    print(f"Input shape: {train_data.input_shape}")
-    print(f"Classes: {train_data.num_classes}")
-    
-    # Initialize network
-    print("\nInitializing network...")
-    key = jax.random.PRNGKey(42)
-    net = init_watts_strogatz(
-        key=key,
-        N_neurons=1000,
-        degree=20,
-        N_perceptors=784,  # 28x28 flattened
-        N_effectors=10,    # 10 digit classes
-        beta=0.3
-    )
-    print(f"Network: {net.v.shape[0]} neurons, {net.weights.shape[1]} connections/neuron")
-    
-    # Process a test sample
+    print(f"Test samples:     {len(test_data)}")
+
+    print("\nInitializing network via factory (reads config.toml)...")
+    net = create_network("lif", jax.random.PRNGKey(42))
+    print(f"Network: {net.data.v.shape[0]} neurons, "
+          f"{net.data.weights.shape[1]} connections/neuron")
+
     image, label = test_data[0]
     print(f"\nProcessing test sample: digit '{label}'")
-    
-    net = run_network(net, image, n_timesteps=50, scale=2.0)
-    
-    # Check output
-    output_potentials = net.v[net.effectors]
+    net = run_network(net, image)
+
+    output_potentials = net.data.v[net.data.effectors]
     predicted = jnp.argmax(output_potentials)
-    
     print(f"\nResults:")
     print(f"  Predicted: {predicted}")
-    print(f"  Actual: {label}")
-    print(f"  Output potentials: {output_potentials}")
+    print(f"  Actual:    {label}")
     print(f"  Match: {'✓' if predicted == label else '✗'}")
 
 
 def example_other_datasets():
     """Show how to load other datasets."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Other Datasets")
-    print("="*60)
-    
+    print("=" * 60)
+
     datasets_info = {
-        'fashion_mnist': ('Fashion-MNIST', 784, 10),
-        'cifar10': ('CIFAR-10', 3072, 10),
-        'kmnist': ('KMNIST', 784, 10),
+        "fashion_mnist": ("Fashion-MNIST", 784, 10),
+        "cifar10":       ("CIFAR-10",      3072, 10),
+        "kmnist":        ("KMNIST",        784,  10),
     }
-    
+
     for name, (display_name, expected_inputs, expected_classes) in datasets_info.items():
         try:
             print(f"\n{display_name}:")
@@ -103,68 +82,48 @@ def example_other_datasets():
             print(f"  ✓ Loaded {len(data)} samples")
             print(f"  Input shape: {data.input_shape} ({data.input_shape[0]} inputs)")
             print(f"  Classes: {data.num_classes}")
-            
-            # Verify expected dimensions
             assert data.input_shape[0] == expected_inputs
             assert data.num_classes == expected_classes
-            
         except Exception as e:
             print(f"  ✗ Failed: {e}")
 
 
 def example_custom_params():
-    """Example with custom network parameters."""
-    print("\n" + "="*60)
+    """Example with custom network parameters (bypassing factory)."""
+    print("\n" + "=" * 60)
     print("Custom Network Parameters")
-    print("="*60)
-    
-    # Load data
-    data = load_mnist(train=False)
-    
-    # Custom parameters
+    print("=" * 60)
+
     custom_params = NetworkParams(
-        v_threshold=1.5,      # Higher threshold
+        v_threshold=1.5,
         v_rest=0.0,
-        LIF_factor=0.85       # Different decay
+        LIF_factor=0.85,
     )
-    
     print(f"\nCustom parameters:")
     print(f"  Threshold: {custom_params.v_threshold}")
-    print(f"  Rest potential: {custom_params.v_rest}")
     print(f"  LIF factor: {custom_params.LIF_factor}")
-    
-    # Initialize with custom params
-    key = jax.random.PRNGKey(123)
+
     net = init_watts_strogatz(
-        key=key,
+        key=jax.random.PRNGKey(123),
+        net_type=LIFNet,
         N_neurons=1000,
         degree=20,
         N_perceptors=784,
         N_effectors=10,
-        beta=0.3,
-        params=custom_params
+        params=custom_params,
     )
-    
     print(f"\nNetwork initialized with custom parameters")
     print(f"  Threshold: {net.params.v_threshold}")
     print(f"  LIF factor: {net.params.LIF_factor}")
 
 
 def main():
-    """Run all examples."""
     print("\nSpiking Neural Network - Dataset Examples\n")
-    
     example_mnist()
     example_other_datasets()
     example_custom_params()
-    
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Examples completed!")
-    print("="*60)
-    print("\nQuick reference:")
-    print("  from datasets import load_mnist, load_vision_dataset")
-    print("  from nets import step_LIF")
-    print("  from nets.initialization import init_watts_strogatz")
 
 
 if __name__ == "__main__":

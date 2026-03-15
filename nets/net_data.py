@@ -4,32 +4,37 @@ import equinox as eqx
 from jaxtyping import Array, Float, Int
 
 
+# ── Components ────────────────────────────────────────────────────────────────
+
 class NetworkParams(eqx.Module):
+    """LIF neuron hyperparameters."""
 
-    # LIF neuron
-
-    # Threshold and rest potential
     v_threshold: float = 1.0
-    v_rest: float = 0.0
+    v_rest:      float = 0.0
 
-    # LIF's RC characteristic time, approx. 5x spike time
-    LIF_factor: float = math.exp(-1 / 6.0)
+    # RC characteristic time ≈ 5× spike width
+    LIF_factor:  float = math.exp(-1 / 6.0)
 
 
 class NetworkData(eqx.Module):
+    """Dynamic network state (topology + membrane potentials)."""
 
-    params:                     NetworkParams
+    # Membrane potential
+    v:                   Float[Array, "N_neurons"]
 
-    # Membrane Potential
-    v:                    Float[Array, "N_neurons"]
+    # Connectivity
+    forward_connections: Int[Array, "N_neurons degree"]
+    weights:             Float[Array, "N_neurons degree"]
 
-    # Forward connections (index)
-    forward_connections:    Int[Array, "N_neurons degree"]
+    # I/O neuron indices
+    perceptors:          Int[Array, "N_perceptors"]
+    effectors:           Int[Array, "N_effectors"]
 
-    # Weights
-    weights:              Float[Array, "N_neurons degree"]
 
-    # I/O
-    # Index of perceptor / effector neurons
-    perceptors:             Int[Array, "N_perceptors"]
-    effectors:              Int[Array, "N_effectors"]
+# ── Concrete entity types ─────────────────────────────────────────────────────
+
+class LIFNet(eqx.Module):
+    """Entity: LIF network. Holds NetworkData and NetworkParams as parallel components."""
+
+    data:   NetworkData
+    params: NetworkParams

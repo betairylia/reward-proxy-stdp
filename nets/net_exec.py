@@ -1,13 +1,35 @@
+"""LIF system: archetype definition and step function.
+
+The LIFArchetype Protocol declares exactly which components step_LIF needs.
+Any concrete type that has `.data: NetworkData` and `.params: NetworkParams`
+satisfies the constraint — no explicit inheritance required.
+"""
+
+from typing import Protocol, TypeVar
+
 import equinox as eqx
 from jaxtyping import Array, Float, Bool
 import jax.numpy as jnp
 
-from .archetypes import T_LIF
+from .net_data import NetworkData, NetworkParams
 
+
+# ── Archetype ─────────────────────────────────────────────────────────────────
+
+class LIFArchetype(Protocol):
+    """Required components for LIF neuron dynamics."""
+    data:   NetworkData
+    params: NetworkParams
+
+
+T_LIF = TypeVar("T_LIF", bound=LIFArchetype)
+
+
+# ── System ────────────────────────────────────────────────────────────────────
 
 def step_LIF(
     net: T_LIF,
-    perceptions: Float[Array, "N_perceptors"]
+    perceptions: Float[Array, "N_perceptors"],
 ) -> T_LIF:
     """Single timestep of LIF neuron dynamics.
 
@@ -23,23 +45,21 @@ def step_LIF(
     T_LIF
         Updated network state, same concrete type as input.
     """
-    # Start with current membrane potentials
-    v = net.v
+    v = net.data.v
 
-    # LIF Decay
+    # LIF decay
     v = net.params.v_rest + (v - net.params.v_rest) * net.params.LIF_factor
 
-    # Apply inputs to perceptor neurons
-    v = v.at[net.perceptors].add(perceptions)
+    # Inject perceptor inputs
+    v = v.at[net.data.perceptors].add(perceptions)
 
-    # Mark binary spikes
+    # Threshold → binary spikes
     spikes: Bool[Array, "N_neurons"] = v >= net.params.v_threshold
 
-    # Reset spiked neurons to rest potential
+    # Reset spiked neurons
     v = jnp.where(spikes, net.params.v_rest, v)
 
-    # Propagate spikes through connections
-    spike_contributions = net.weights * spikes[:, None]
-    v = v.at[net.forward_connections].add(spike_contributions)
+    # Propagate through weighted connections
+    v = v.at[net.data.forward_connections].add(net.data.weights * spikes[:, None])
 
-    return eqx.tree_at(lambda n: n.v, net, v)
+    return eqx.tree_at(lambda n: n.data.v, net, v)

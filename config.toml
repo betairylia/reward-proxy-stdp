@@ -1,0 +1,14 @@
+# Network factory configuration
+# Read by nets.factory.create_network().
+
+[network]
+N_neurons    = 1000
+degree       = 20
+N_perceptors = 784   # 28×28 MNIST pixels flattened
+N_effectors  = 10    # 10 digit classes
+beta         = 0.3   # Watts-Strogatz rewiring probability
+
+[lif_params]
+v_threshold = 1.0
+v_rest      = 0.0
+LIF_factor  = 0.8464817248906141   # exp(-1/6)
