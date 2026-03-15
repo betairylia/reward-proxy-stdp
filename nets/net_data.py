@@ -1,7 +1,7 @@
 import math
 
 import equinox as eqx
-from jaxtyping import Array, Float, Int
+from jaxtyping import Array, Float, Int, Bool
 
 
 # ── Components ────────────────────────────────────────────────────────────────
@@ -29,3 +29,6 @@ class NetworkData(eqx.Module):
     # I/O neuron indices
     perceptors:          Int[Array, "N_perceptors"]
     effectors:           Int[Array, "N_effectors"]
+
+class SpikeData(eqx.Module):
+    s: Bool[Array, "N_neurons"]
