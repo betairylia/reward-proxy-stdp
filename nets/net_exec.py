@@ -12,6 +12,7 @@ type with the required fields satisfies the constraint, no inheritance needed.
 
 from typing import Protocol, TypeVar
 
+import jax
 import equinox as eqx
 from jaxtyping import Array, Float, Bool
 import jax.numpy as jnp
@@ -33,6 +34,7 @@ T_LIF = TypeVar("T_LIF", bound=LIFArchetype)
 
 # ── System ────────────────────────────────────────────────────────────────────
 
+@eqx.filter_jit
 def generate_spike(
     net: T_LIF
 ) -> T_LIF:
@@ -66,6 +68,7 @@ def generate_spike(
     )
 
 
+@eqx.filter_jit
 def step_leaky_integrate(
     net: T_LIF,
     perceptions: Float[Array, "N_perceptors"],
@@ -101,9 +104,23 @@ def step_leaky_integrate(
 
     return eqx.tree_at(lambda n: n.data.v, net, v)
 
+@eqx.filter_jit
 def step_LIF(
     net: T_LIF,
     perceptions: Float[Array, "N_perceptors"],
 ) -> T_LIF:
     net = generate_spike(net)
     return step_leaky_integrate(net, perceptions)
+
+# TODO: We must find a good way to normalize weights, grouped "on in-degrees"
+@eqx.filter_jit
+def step_normalize_weight(
+    net: T_LIF
+) -> T_LIF:
+    w = net.data.weights
+    norm = jnp.zeros_like(net.data.v).at[net.data.forward_connections].add(jnp.power(net.data.weights, 2))
+    norm = jnp.where(norm == 0, 1, norm)
+    norm = jnp.sqrt(norm)
+    w = w / norm[net.data.forward_connections]
+
+    return eqx.tree_at(lambda n: n.data.weights, net, w)

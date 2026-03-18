@@ -9,6 +9,12 @@ N_effectors  = 10    # 10 digit classes
 beta         = 0.3   # Watts-Strogatz rewiring probability
 
 [lif_params]
-v_threshold = 1.0
+v_threshold = 5.0
 v_rest      = 0.0
 LIF_factor  = 0.8464817248906141   # exp(-1/6)
+
+[stdp_params]
+lr_base          = 1e-3
+lr_positive      = 1.0
+lr_negative      = 1.0
+spike_trace_beta = 0.99

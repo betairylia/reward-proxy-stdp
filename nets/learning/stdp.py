@@ -16,9 +16,12 @@ step_STDP expects spikes to already reflect the current timestep
 
 from typing import Protocol, TypeVar
 
+import jax
+import jax.numpy as jnp
 import equinox as eqx
 from jaxtyping import Array, Float
 from nets.net_data import NetworkData, NetworkParams, SpikeData
+from nets.factory import register_component
 
 
 # ── Components ────────────────────────────────────────────────────────────────
@@ -41,7 +44,6 @@ class STDPArchetype(Protocol):
     """Required components for STDP weight updates."""
     data:        NetworkData
     stdp_data:   STDPData
-    params:      NetworkParams
     stdp_params: STDPParams
     spikes:      SpikeData
 
@@ -50,6 +52,7 @@ T_STDP = TypeVar("T_STDP", bound=STDPArchetype)
 
 # ── System ────────────────────────────────────────────────────────────────────
 
+@eqx.filter_jit
 def step_STDP(
     net: T_STDP,
 ) -> T_STDP:
@@ -90,3 +93,12 @@ def step_STDP(
         net,
         (new_w, new_trace)
     )
+
+
+# ── Component builders ────────────────────────────────────────────────────────
+
+register_component(STDPData, lambda cfg: STDPData(
+    spike_trace=jnp.zeros(cfg["network"]["N_neurons"])
+))
+
+register_component(STDPParams, lambda cfg: STDPParams(**cfg.get("stdp_params", {})))

@@ -34,7 +34,7 @@ from typing import Any, Callable, TypeVar, get_type_hints
 
 import jax.numpy as jnp
 
-from .net_data import NetworkData, NetworkParams
+from .net_data import NetworkData, NetworkParams, SpikeData
 
 T = TypeVar("T")
 
@@ -75,8 +75,14 @@ def _build_network_params(cfg: dict) -> NetworkParams:
     return NetworkParams(**cfg.get("lif_params", {}))
 
 
+def _build_spike_data(cfg: dict) -> SpikeData:
+    N = cfg["network"]["N_neurons"]
+    return SpikeData(s=jnp.zeros(N, dtype=jnp.bool_))
+
+
 register_component(NetworkData, _build_network_data)
 register_component(NetworkParams, _build_network_params)
+register_component(SpikeData, _build_spike_data)
 
 
 # ── Factory ───────────────────────────────────────────────────────────────────

@@ -16,7 +16,7 @@ Example usage::
 """
 
 from .net_data import NetworkData, NetworkParams
-from .net_exec import LIFArchetype, T_LIF, step_LIF
+from .net_exec import LIFArchetype, T_LIF, step_LIF, step_normalize_weight
 
 __all__ = [
     # Components
