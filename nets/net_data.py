@@ -29,6 +29,7 @@ class NetworkData(eqx.Module):
     # I/O neuron indices
     perceptors:          Int[Array, "N_perceptors"]
     effectors:           Int[Array, "N_effectors"]
+    out_edge_mask:      Bool[Array, "N_neurons"]
 
 class SpikeData(eqx.Module):
     s: Bool[Array, "N_neurons"]

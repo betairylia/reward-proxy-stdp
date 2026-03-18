@@ -117,7 +117,7 @@ def step_LIF(
 def step_normalize_weight(
     net: T_LIF
 ) -> T_LIF:
-    w = net.data.weights
+    w = net.data.weights * net.data.out_edge_mask[:, None]
     norm = jnp.zeros_like(net.data.v).at[net.data.forward_connections].add(jnp.power(net.data.weights, 2))
     norm = jnp.where(norm == 0, 1, norm)
     norm = jnp.sqrt(norm)

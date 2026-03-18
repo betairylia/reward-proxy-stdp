@@ -68,6 +68,7 @@ def _build_network_data(cfg: dict) -> NetworkData:
         weights=jnp.zeros((N, d)),
         perceptors=jnp.arange(Np, dtype=jnp.int32),
         effectors=jnp.arange(N - Ne, N, dtype=jnp.int32),
+        out_edge_mask=(jnp.arange(N) < (N - Ne))
     )
 
 
